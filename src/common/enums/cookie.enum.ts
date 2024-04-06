@@ -1,3 +1,5 @@
 export enum CookieKeys  {
-    OTP="otp"
+    OTP="otp",
+    EmailOTP="email-otp",
+    PhoneOTP="phone-otp",
 }
