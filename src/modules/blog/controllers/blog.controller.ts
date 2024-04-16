@@ -8,11 +8,11 @@ import { Pagination } from 'src/common/decorators/pagination.decorator';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { SkipAuth } from 'src/common/decorators/skip-auth.decorator';
 import { FilterBlog } from 'src/common/decorators/filter.decorator';
+import { AuthDecorator } from 'src/common/decorators/auth.decorator';
 
 @Controller('blog')
 @ApiTags("Blog")
-@ApiBearerAuth("Authorization")
-@UseGuards(AuthGuard)
+@AuthDecorator()
 export class BlogController {
   constructor(private readonly blogService: BlogService) { }
 
@@ -33,6 +33,7 @@ export class BlogController {
     return this.blogService.blogList(paginationDto, filterDto)
   }
   @Get("/by-slug/:slug")
+  @SkipAuth()
   @Pagination()
   findOneBySlug(@Param('slug') slug: string, @Query() paginationDto: PaginationDto) {
     return this.blogService.findOneBySlug(slug, paginationDto)

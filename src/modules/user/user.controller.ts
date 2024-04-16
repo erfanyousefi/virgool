@@ -14,12 +14,12 @@ import { CookieKeys } from 'src/common/enums/cookie.enum';
 import { CookiesOptionsToken } from 'src/common/utils/cookie.util';
 import { PublicMessage } from 'src/common/enums/message.enum';
 import { CheckOtpDto } from '../auth/dto/auth.dto';
+import { AuthDecorator } from 'src/common/decorators/auth.decorator';
 
 
 @Controller('user')
 @ApiTags("User")
-@ApiBearerAuth("Authorization")
-@UseGuards(AuthGuard)
+@AuthDecorator()
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
