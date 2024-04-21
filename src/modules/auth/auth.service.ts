@@ -13,12 +13,13 @@ import { randomInt } from 'crypto';
 import { TokenService } from './tokens.service';
 import { Request, Response } from 'express';
 import { CookieKeys } from 'src/common/enums/cookie.enum';
-import { AuthResponse } from './types/response';
+import { AuthResponse, GoogleUser } from './types/response';
 import { REQUEST } from '@nestjs/core';
 import { CookiesOptionsToken } from 'src/common/utils/cookie.util';
 import { KavenegarService } from '../http/kavenegar.service';
+import { randomId } from 'src/common/utils/functions.util';
 
-@Injectable({scope: Scope.REQUEST})
+@Injectable({ scope: Scope.REQUEST })
 export class AuthService {
     constructor(
         @InjectRepository(UserEntity) private userRepository: Repository<UserEntity>,
@@ -33,12 +34,12 @@ export class AuthService {
         let result: AuthResponse;
         switch (type) {
             case AuthType.Login:
-                result = await  this.login(method, username);
-                await this.sendOtp(method, username, result.code)
+                result = await this.login(method, username);
+                // await this.sendOtp(method, username, result.code)
                 return this.sendResponse(res, result)
             case AuthType.Register:
-                result = await  this.register(method, username);
-                await this.sendOtp(method, username, result.code)
+                result = await this.register(method, username);
+                // await this.sendOtp(method, username, result.code)
                 return this.sendResponse(res, result)
             default:
                 throw new UnauthorizedException()
@@ -49,7 +50,7 @@ export class AuthService {
         let user: UserEntity = await this.checkExistUser(method, validUsername)
         if (!user) throw new UnauthorizedException(AuthMessage.NotFoundAccount);
         const otp = await this.saveOtp(user.id, method);
-        const token = this.tokenService.createOtpToken({userId: user.id});
+        const token = this.tokenService.createOtpToken({ userId: user.id });
         return {
             token,
             code: otp.code
@@ -69,25 +70,26 @@ export class AuthService {
         user.username = `m_${user.id}`
         await this.userRepository.save(user);
         const otp = await this.saveOtp(user.id, method);
-        const token = this.tokenService.createOtpToken({userId: user.id})
+        const token = this.tokenService.createOtpToken({ userId: user.id })
         return {
             token,
             code: otp.code
         }
     }
     async sendOtp(method: AuthMethod, username: string, code: string) {
-        if(method === AuthMethod.Email) {
+        if (method === AuthMethod.Email) {
             //sendEmail
-        }else if(method === AuthMethod.Phone) {
+        } else if (method === AuthMethod.Phone) {
             await this.kavenegarService.sendVerificationSms(username, code)
         }
 
     }
     async sendResponse(res: Response, result: AuthResponse) {
-        const {token } = result;
+        const { token, code } = result;
         res.cookie(CookieKeys.OTP, token, CookiesOptionsToken());
         res.json({
             message: PublicMessage.SentOtp,
+            code
         })
     }
     async saveOtp(userId: number, method: AuthMethod) {
@@ -118,20 +120,20 @@ export class AuthService {
     }
     async checkOtp(code: string) {
         const token = this.request.cookies?.[CookieKeys.OTP];
-        if(!token) throw new UnauthorizedException(AuthMessage.ExpiredCode);
-        const {userId} = this.tokenService.verifyOtpToken(token);
-        const otp = await this.otpRepository.findOneBy({userId});
-        if(!otp) throw new UnauthorizedException(AuthMessage.LoginAgain);
+        if (!token) throw new UnauthorizedException(AuthMessage.ExpiredCode);
+        const { userId } = this.tokenService.verifyOtpToken(token);
+        const otp = await this.otpRepository.findOneBy({ userId });
+        if (!otp) throw new UnauthorizedException(AuthMessage.LoginAgain);
         const now = new Date();
-        if(otp.expiresIn < now) throw new UnauthorizedException(AuthMessage.ExpiredCode);
-        if(otp.code !== code ) throw new UnauthorizedException(AuthMessage.TryAgain);
-        const accessToken = this.tokenService.createAccessToken({userId})
-        if(otp.method === AuthMethod.Email) {
-            await this.userRepository.update({id: userId}, {
+        if (otp.expiresIn < now) throw new UnauthorizedException(AuthMessage.ExpiredCode);
+        if (otp.code !== code) throw new UnauthorizedException(AuthMessage.TryAgain);
+        const accessToken = this.tokenService.createAccessToken({ userId })
+        if (otp.method === AuthMethod.Email) {
+            await this.userRepository.update({ id: userId }, {
                 verify_email: true
             })
-        }else if(otp.method === AuthMethod.Phone) {
-            await this.userRepository.update({id: userId}, {
+        } else if (otp.method === AuthMethod.Phone) {
+            await this.userRepository.update({ id: userId }, {
                 verify_email: true
             })
         }
@@ -154,9 +156,9 @@ export class AuthService {
         return user;
     }
     async validateAccessToken(token: string) {
-        const {userId} = this.tokenService.verifyAccessToken(token);
-        const user = await this.userRepository.findOneBy({id: userId});
-        if(!user) throw new UnauthorizedException(AuthMessage.LoginAgain);
+        const { userId } = this.tokenService.verifyAccessToken(token);
+        const user = await this.userRepository.findOneBy({ id: userId });
+        if (!user) throw new UnauthorizedException(AuthMessage.LoginAgain);
         return user;
     }
     usernameValidator(method: AuthMethod, username: string) {
@@ -171,6 +173,32 @@ export class AuthService {
                 return username;
             default:
                 throw new UnauthorizedException("username data is not valid")
+        }
+    }
+    async googleAuth(userData: GoogleUser) {
+        const {email, firstName, lastName} = userData;
+        let token: string;
+        let user = await this.userRepository.findOneBy({email});
+        if(user) {
+            token = this.tokenService.createOtpToken({ userId: user.id });
+        }else {
+            user = this.userRepository.create({
+                email,
+                verify_email: true,
+                username: email.split("@")['0'] + randomId(),
+            });
+            user = await this.userRepository.save(user);
+            let profile = this.profileRepository.create({
+                userId: user.id,
+                nick_name: `${firstName} ${lastName}`,
+            });
+            profile = await this.profileRepository.save(profile);
+            user.profileId = profile.id;
+            await this.userRepository.save(user);
+            token = this.tokenService.createAccessToken({userId: user.id})
+        }
+        return {
+            token
         }
     }
 

@@ -22,3 +22,7 @@ export class CheckOtpDto {
     @Length(5, 5)
     code: string;
 }
+export class UserBlockDto {
+    @ApiProperty()
+    userId: number;
+}

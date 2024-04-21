@@ -18,5 +18,8 @@ namespace NodeJS {
         PHONE_TOKEN_SECRET: string
         //kavenegar
         SEND_SMS_URL: string
+        //google
+        GOOGLE_CLIENT_ID: string;
+        GOOGLE_SECRET_ID: string;
     }
 }
