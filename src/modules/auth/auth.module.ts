@@ -13,8 +13,12 @@ import { GoogleStrategy } from './strategy/google.strategy';
 
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity, OtpEntity, ProfileEntity])],
-  controllers: [AuthController, GoogleAuthController],
-  providers: [AuthService, JwtService, TokenService, GoogleStrategy],
-  exports: [AuthService, JwtService, TokenService, TypeOrmModule, GoogleStrategy],
+  // controllers: [AuthController, GoogleAuthController],
+  // providers: [AuthService, JwtService, TokenService, GoogleStrategy],
+  // exports: [AuthService, JwtService, TokenService, TypeOrmModule, GoogleStrategy],
+  controllers: [AuthController],
+  providers: [AuthService, JwtService, TokenService],
+  exports: [AuthService, JwtService, TokenService, TypeOrmModule],
 })
 export class AuthModule {}
+ 
